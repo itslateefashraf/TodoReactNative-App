@@ -1,27 +1,50 @@
-import { View, Text, TextInput, StyleSheet, TouchableHighlight, TouchableOpacity } from 'react-native'
+import { View, Text, TextInput, StyleSheet, TouchableHighlight, TouchableOpacity, Alert, ActivityIndicator } from 'react-native'
 import React, { useState } from 'react'
 import { router, useLocalSearchParams } from 'expo-router'
 import { todos } from '@/utils/todo';
+import { addDoc, collection, doc, setDoc } from 'firebase/firestore';
+import { db } from '@/firebaseConfig';
 
 
 
 const CreateTodo = () => {
   const [todo, setTodo] = useState("");
+  const [isLoading, setLoading] = useState(false);
   const { id } = useLocalSearchParams()
 
-  const saveTodo = () => {
-    console.log(todos.length)
+  const saveTodo = async() => {
+    try {
+      console.log(todos.length)
+
+    if(todo == ''){
+      Alert.alert('Required', 'Please enter a todo!')
+      return
+    }
 
     let data = {
       todoName:todo,
       date: new Date(),
-      id:todos.length+1,
       done:false
     }
-    todos.push(data)
+
+    setLoading(true)
+    await addDoc(collection(db, "todos"), data);
+    Alert.alert('Success', 'Todo saved successfully!')
+    setLoading(false)
+
+    // todos.push(data)
     router.back()
+    } catch (error) {
+      console.log(error)
+    }
   }
 
+  if(isLoading){
+    return ( <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
+      <ActivityIndicator size="large" color="#00ff00" />
+    </View>)
+  }
+  
   return (
     <View style={styles.container}>
       <Text>CreateTodo</Text>

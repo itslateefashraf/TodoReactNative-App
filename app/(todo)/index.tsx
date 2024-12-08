@@ -1,10 +1,13 @@
-import { View, Text, FlatList, Touchable, Pressable,StyleSheet } from 'react-native'
+import { View, Text, FlatList, Touchable, Pressable,StyleSheet, Alert, ActivityIndicator } from 'react-native'
 // import Icon from 'react-native-vector-icons/Ionicons';
 import Ionicons from '@expo/vector-icons/Ionicons';
 import React, { useCallback, useEffect, useState } from 'react'
-import { todos } from '@/utils/todo';
+// import { todos } from '@/utils/todo';
 import { Link } from '@react-navigation/native';
 import { router, useFocusEffect } from 'expo-router';
+import { collection, deleteDoc, doc, getDoc, getDocs } from 'firebase/firestore';
+import { db } from '@/firebaseConfig';
+import { get } from 'react-native/Libraries/TurboModule/TurboModuleRegistry';
 
 
 
@@ -15,23 +18,36 @@ const navigateToCreateTodo = () =>{
 
 
 const index = () => {
-  const [todosData, setTodosData] = useState<any>(todos)
+  const [todosData, setTodosData] = useState<any>()
   const [reload, setReload] = useState<any>(false)
+  const [isLoading, setLoading] = useState<any>(false)
+
 useFocusEffect(
 
   useCallback(()=>{
-    // console.log(todos)
-    alert('reload')
-    setTodosData(todos)
-  },[todos])
+    getTodos()
+  },[])
 )
-useEffect(()=>{
-  setTodosData(todosData)
-},[reload])
+
+const getTodos = async()=>{
+ try {
+  // alert('getting toddos')
+  const docSnap = await getDocs(collection(db,'todos'))
+    const todoList =  docSnap.docs.map((doc:any) => ({id:doc.id, ...doc.data() }) )
+    console.log(todoList)
+    setTodosData(todoList)
+ } catch (error) {
+  console.log(error)
+ }
+}
+  useEffect(()=>{
+    getTodos()
+  },[reload])
+
   const renderTodo = ({ item }: any) => {
     return (
       <View style={styles.todoItem}>
-        <Text style={item.done == true ? {textDecorationLine:'line-through'}:{}}>{item.todoName}</Text>
+        <Text style={[item.done == true ? {textDecorationLine:'line-through'}:{},{flex:1}]}>{item.todoName}</Text>
         <View style={styles.todoIcons}>
           {!item.done && <Ionicons  name="checkmark-circle-outline" size={30} color="green" onPress={()=> doneTodo(item)} />}
           {item.done && <Ionicons  name="close-circle-outline" size={30} color="red" onPress={()=> doneTodo(item)} />}
@@ -43,16 +59,26 @@ useEffect(()=>{
     )
   }
 
-  const deleteTodo = (item:any) =>{
-    alert(item.id)
-    const filterdTodos = todosData.filter((todo:any)=> {
-      if(todo.id != item.id){
-        return todo
-      }
-    })
+  const deleteTodo = async(item:any) =>{
+   try {
+    // alert(item.id)
+    const docRef =  doc(db,'todos',item.id)
+    setLoading(true)
+    await deleteDoc(docRef)
+    setLoading(false)
+    Alert.alert('Success','Record deleted successfully')
+    setReload((prev:any) => !prev)
+    // const filterdTodos = todosData.filter((todo:any)=> {
+    //   if(todo.id != item.id){
+    //     return todo
+    //   }
+    // })
     // alert('delete')
-    console.log(filterdTodos)
-    setTodosData(filterdTodos)
+    // console.log(filterdTodos)
+    // setTodosData(filterdTodos)
+   } catch (error) {
+    console.log(error)
+   }
   }
   
   const doneTodo = (item:any) => {
@@ -65,6 +91,13 @@ useEffect(()=>{
     setReload((prev:any) => !prev)
   }
 
+
+  if(isLoading){
+    return ( <View style={{flex:1,alignItems:'center',justifyContent:'center'}}>
+      <ActivityIndicator size="large" color="#00ff00" />
+    </View>)
+  }
+
   return (
 
     <View style={styles.container}>
@@ -73,7 +106,6 @@ useEffect(()=>{
         data={todosData}
         renderItem={renderTodo}
         keyExtractor={item => item.id.toString()}
-
       />
 
 <Link screen="CreateTodo" params={{ id: 'jane' }}>
